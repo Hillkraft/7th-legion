@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Exile Front">
+<meta name="theme-color" content="#0b0f12">
+<title>Exile Front</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="game"></canvas>
+
+  <div id="hud" class="hidden">
+    <div id="topbar">
+      <span class="stat" id="credits">◈ 0</span>
+      <span class="stat dim" id="income">+0/s</span>
+      <span class="stat" id="unitcount">0/50</span>
+      <span class="stat" id="relaycount">⌖ 0</span>
+      <span class="stat dim" id="clock">0:00</span>
+      <span class="spacer"></span>
+      <span class="stat dim" id="selinfo"></span>
+      <button id="btnMenu" class="iconbtn" aria-label="Menu">☰</button>
+    </div>
+    <canvas id="minimap" width="140" height="140"></canvas>
+    <div id="actions">
+      <button data-act="all" title="Select whole army (Ctrl+A)">ALL</button>
+      <button data-act="box" title="Box-select mode (B)">BOX</button>
+      <button data-act="amove" title="Attack-move (A)">A-MOVE</button>
+      <button data-act="stop" title="Stop (S)">STOP</button>
+      <button data-act="clear" title="Deselect (Esc)">CLEAR</button>
+    </div>
+    <div id="cards"></div>
+    <div id="buildbar"></div>
+    <div id="banner" class="hidden"><span id="bannertext"></span><button id="bannercancel">Cancel</button></div>
+    <div id="ticker"></div>
+  </div>
+
+  <!-- Screens -->
+  <div id="scr-menu" class="screen">
+    <div class="panel title-panel">
+      <div class="logo">EXILE<span>FRONT</span></div>
+      <div class="tag">The Return of the Abandoned</div>
+      <button class="big" data-go="campaign">Campaign</button>
+      <button class="big" data-go="skirmish">Skirmish</button>
+      <button class="big" data-go="help">How to Play</button>
+      <div class="foot">Tip: on iPhone, tap <b>Share → Add to Home Screen</b> to play full screen.</div>
+    </div>
+  </div>
+
+  <div id="scr-campaign" class="screen hidden">
+    <div class="panel">
+      <h2>Campaign</h2>
+      <div id="missionlist"></div>
+      <button data-go="menu">Back</button>
+    </div>
+  </div>
+
+  <div id="scr-briefing" class="screen hidden">
+    <div class="panel">
+      <h2 id="brief-title"></h2>
+      <div id="brief-text" class="brief"></div>
+      <div class="row">
+        <button data-go="campaign">Back</button>
+        <button class="primary" id="brief-start">Deploy</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="scr-skirmish" class="screen hidden">
+    <div class="panel">
+      <h2>Skirmish</h2>
+      <label>Map size
+        <select id="sk-size"><option value="56">Small</option><option value="68" selected>Medium</option><option value="80">Large</option></select>
+      </label>
+      <label>Opponent
+        <select id="sk-diff"><option value="easy">Recruit (easy)</option><option value="normal" selected>Veteran (normal)</option><option value="hard">Elite (hard)</option><option value="brutal">Legend (brutal)</option></select>
+      </label>
+      <label>Relay towers
+        <select id="sk-relays"><option>4</option><option selected>6</option><option>7</option><option>9</option></select>
+      </label>
+      <label>Starting credits
+        <select id="sk-credits"><option value="500">500</option><option value="1000" selected>1000</option><option value="2000">2000</option></select>
+      </label>
+      <label>Map seed <input id="sk-seed" type="number" inputmode="numeric" placeholder="random"></label>
+      <div class="row">
+        <button data-go="menu">Back</button>
+        <button class="primary" id="sk-start">Start</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="scr-help" class="screen hidden">
+    <div class="panel help">
+      <h2>How to Play</h2>
+      <p><b>Goal:</b> destroy the enemy <b>Command Base</b>. Lose yours and the war is over.</p>
+      <p><b>Credits</b> trickle in from your base and from every <b>Relay Tower</b> you hold. Park units next to a tower to capture it (Engineers capture 3× faster). Kills pay a bounty too.</p>
+      <p><b>Build</b> units from the bar at the bottom. Hold or right-click a button to cancel one. Tap your base, then the map, to set a rally point.</p>
+      <p><b>Cards:</b> every so often (and every 6 kills) you draw a tactical card. Tap one to use it; some need a target on the map.</p>
+      <p><b>Veterans:</b> units rank up after 3, 7 and 12 kills, gaining damage and armor.</p>
+      <h3>Touch</h3>
+      <ul>
+        <li>Tap a unit to select it. Double-tap selects every unit of that type on screen.</li>
+        <li>With units selected, tap the ground to move or tap an enemy to attack.</li>
+        <li>Drag with one finger to scroll. Pinch to zoom. Turn on <b>BOX</b> to drag-select instead.</li>
+        <li><b>A-MOVE</b>: units attack anything they meet on the way.</li>
+        <li>Tap the minimap to jump there.</li>
+      </ul>
+      <h3>Mouse &amp; keyboard</h3>
+      <ul>
+        <li>Left-drag to box-select, left or right click to order, middle-drag or arrow keys to scroll, wheel to zoom.</li>
+        <li>A attack-move · S stop · B box mode · Ctrl+A select all · Esc cancel · 1–7 build · Z X C V (Shift+B) play cards.</li>
+      </ul>
+      <button data-go="menu">Back</button>
+    </div>
+  </div>
+
+  <div id="scr-pause" class="screen hidden">
+    <div class="panel">
+      <h2>Paused</h2>
+      <button class="big" id="p-resume">Resume</button>
+      <button class="big" id="p-sound">Sound: On</button>
+      <button class="big" id="p-restart">Restart</button>
+      <button class="big" id="p-quit">Quit to Menu</button>
+    </div>
+  </div>
+
+  <div id="scr-end" class="screen hidden">
+    <div class="panel">
+      <h2 id="end-title"></h2>
+      <div id="end-text" class="brief"></div>
+      <div id="end-stats"></div>
+      <div class="row" id="end-buttons"></div>
+    </div>
+  </div>
+</div>
+<script src="game.js"></script>
+</body>
+</html>
