@@ -1,0 +1,734 @@
+<title>SFH Development 3D Model</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: full-height drafting viewport + right-hand layer register (stacks under the viewer on phones) */
+:root {
+  --paper: #eef1f4;        /* page ground, blueprint-paper grey with blue bias */
+  --panel: #f8fafb;
+  --ink: #1d2733;          /* primary text */
+  --ink-2: #566373;        /* secondary text */
+  --rule: #cfd7df;
+  --accent: #1f5fa8;       /* drafting blue */
+  --accent-ink: #ffffff;
+  --sel: #e08a00;          /* selection highlight (amber, like a redline) */
+  --scene: #dfe5eb;        /* 3D background */
+  --font-display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Source Sans 3", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #121820; --panel: #18202a; --ink: #e4eaf0; --ink-2: #93a1b0; --rule: #2a3542;
+    --accent: #6aa7ec; --accent-ink: #0d1520; --sel: #ffb340; --scene: #1a222c; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #121820; --panel: #18202a; --ink: #e4eaf0; --ink-2: #93a1b0; --rule: #2a3542;
+  --accent: #6aa7ec; --accent-ink: #0d1520; --sel: #ffb340; --scene: #1a222c; color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--paper); color: var(--ink); font-family: var(--font-body); font-size: 14px; }
+.app { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 340px; }
+.viewer { position: relative; min-width: 0; min-height: 0; background: var(--scene); }
+#c { display: block; width: 100%; height: 100%; touch-action: none; outline: none; }
+#c:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+.titleblock {
+  position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); top: 14px;
+  display: grid; gap: 2px; pointer-events: none;
+}
+.titleblock h1 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 26px; letter-spacing: .02em; text-transform: uppercase; line-height: 1; text-wrap: balance; }
+.titleblock p { margin: 0; color: var(--ink-2); font-size: 12.5px; }
+.toolbar {
+  position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); right: 16px; bottom: 14px;
+  display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center;
+  background: color-mix(in srgb, var(--panel) 90%, transparent); border: 1px solid var(--rule);
+  border-radius: 6px; padding: 8px 12px; backdrop-filter: blur(4px);
+}
+.toolbar label { display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: var(--ink-2); }
+.toolbar input[type=range] { width: 150px; accent-color: var(--accent); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.btn {
+  font: 600 12px var(--font-body); letter-spacing: .04em; text-transform: uppercase;
+  border: 1px solid var(--rule); background: var(--panel); color: var(--ink);
+  padding: 6px 10px; border-radius: 4px; cursor: pointer;
+}
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn:focus-visible, .chip:focus-visible, .layer input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn[aria-pressed="true"], .chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.info {
+  position: absolute; right: 16px; top: 14px; width: min(300px, calc(100% - 32px));
+  background: var(--panel); border: 1px solid var(--rule); border-left: 3px solid var(--sel);
+  border-radius: 4px; padding: 10px 12px; display: grid; gap: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.12);
+}
+.info h2 { margin: 0; font: 600 18px var(--font-display); letter-spacing: .02em; text-wrap: balance; }
+.info dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 12.5px; }
+.info dt { color: var(--ink-2); text-transform: uppercase; font-size: 10.5px; letter-spacing: .06em; padding-top: 2px; }
+.info dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.info .row { display: flex; gap: 8px; flex-wrap: wrap; }
+.hint { position: absolute; right: 16px; top: 14px; font-size: 12px; color: var(--ink-2); pointer-events: none; }
+aside {
+  background: var(--panel); border-left: 1px solid var(--rule); min-height: 0; overflow-y: auto;
+  padding-block: 14px 24px; padding-left: 16px; padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 14px;
+}
+aside h2 { margin: 0; font: 700 15px var(--font-display); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  font: 600 12px var(--font-body); border: 1px solid var(--rule); background: transparent; color: var(--ink);
+  padding: 5px 9px; border-radius: 999px; cursor: pointer;
+}
+.chip:hover { border-color: var(--accent); }
+.group { display: grid; gap: 2px; }
+.group-head { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--rule); padding-bottom: 3px; margin-bottom: 2px; }
+.group-head h3 { margin: 0; font: 600 13px var(--font-display); letter-spacing: .12em; text-transform: uppercase; }
+.group-head button { border: 0; background: none; color: var(--accent); font: 600 11px var(--font-body); cursor: pointer; padding: 2px 4px; }
+.layer { display: grid; grid-template-columns: auto 12px minmax(0, 1fr); gap: 8px; align-items: start; padding: 4px 2px; border-radius: 3px; cursor: pointer; }
+.layer:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.layer input { margin: 2px 0 0; accent-color: var(--accent); }
+.sw { width: 12px; height: 12px; border-radius: 2px; margin-top: 3px; border: 1px solid rgba(0,0,0,.25); }
+.layer .nm { font-size: 13px; line-height: 1.25; }
+.layer .q { display: block; font: 11px var(--font-mono); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.note { font-size: 12px; color: var(--ink-2); line-height: 1.45; margin: 0; }
+.legend-key { display: flex; gap: 6px; align-items: center; }
+@media (max-width: 820px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: 62vh auto; height: auto; }
+  html, body { height: auto; }
+  aside { border-left: 0; border-top: 1px solid var(--rule); overflow: visible; padding-left: max(16px, env(safe-area-inset-left, 0px)); }
+  .titleblock h1 { font-size: 20px; }
+  .toolbar input[type=range] { width: 110px; }
+  .info { top: auto; bottom: 74px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <div class="viewer">
+    <canvas id="c" tabindex="0" aria-label="3D model of the SFH Development spec home. Drag to orbit, scroll to zoom, right-drag to pan, click an element to inspect it."></canvas>
+    <div class="titleblock">
+      <h1>SFH Development · Spec Home</h1>
+      <p>Ouachita Parish, LA · 1,352 gsf conditioned · 117 sf porch · 504 sf carport · Progress set 5/31/2023 (Not for construction)</p>
+    </div>
+    <div class="hint" id="hint">Drag to orbit · scroll to zoom · right-drag to pan · click to inspect</div>
+    <div class="info" id="info" hidden>
+      <h2 id="i-name">—</h2>
+      <dl>
+        <dt>Layer</dt><dd id="i-layer"></dd>
+        <dt>Takeoff</dt><dd id="i-tid" class="mono"></dd>
+        <dt>Spec</dt><dd id="i-spec"></dd>
+        <dt>Size</dt><dd id="i-size" class="mono"></dd>
+        <dt>Basis</dt><dd id="i-basis"></dd>
+      </dl>
+      <div class="row">
+        <button class="btn" id="b-hide" type="button">Hide element</button>
+        <button class="btn" id="b-iso" type="button">Isolate layer</button>
+        <button class="btn" id="b-close" type="button">Close</button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <label for="cut">Section cut <input id="cut" type="range" min="0.5" max="20" step="0.25" value="20"> <span class="mono" id="cut-v">off</span></label>
+      <button class="btn" id="b-reset" type="button">Reset view</button>
+      <button class="btn" id="b-top" type="button">Plan view</button>
+      <button class="btn" id="b-unhide" type="button">Unhide elements</button>
+    </div>
+  </div>
+  <aside aria-label="Model layers">
+    <div class="group">
+      <h2>Views</h2>
+      <div class="presets" id="presets"></div>
+    </div>
+    <div id="layers" style="display:grid;gap:14px"></div>
+    <p class="note">Each layer maps to a takeoff ID in <span class="mono">SFH_Ouachita_Takeoff_Estimate.xlsx</span>. Geometry follows the dimensioned A101 plan; items tagged <b>ASSUMED</b> in the inspector are not shown on the drawings and are listed in the assumptions log. This is a visual coordination model, not a structural or BIM model.</p>
+  </aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function () {
+const D = __MODEL_DATA__;
+const Q = __TAKEOFF_QTY__;
+const W = D.W, ZH = D.Z_HOUSE, ZP = D.Z_PORCH, CD = D.CARPORT_D, PL = D.PLATE, P = D.PITCH;
+const ET = D.EXT_T, HEEL = 0.33, TD = 1.0; // truss heel height & vaulted truss depth (ASSUMED)
+const EO = D.EAVE_OH, RO = D.RAKE_OH;
+const IN = 1 / 12;
+
+/* ---------------- layer register ---------------- */
+const GROUPS = [
+  ["Site & foundation", [
+    ["site", "Site, lawn & landscaping", "#7fa66a", "32-200"],
+    ["paving", "Driveway & flatwork", "#b9b5aa", "32-100"],
+    ["earth", "Select-fill building pad", "#a8825a", "31-120"],
+    ["slab", "Slab & finished concrete floor", "#c9c6bf", "03-100"],
+    ["beams", "Grade beams & footings", "#9a958c", "03-110"],
+  ]],
+  ["Structure", [
+    ["framing_ext", "Exterior 2x6 wall framing", "#d8b27a", "06-120"],
+    ["framing_int", "Interior 2x4 partition framing", "#e4c592", "06-160"],
+    ["trusses", "Roof trusses @ 4' O.C.", "#c79a5c", "06-190"],
+    ["purlins", "Roof purlins & ceiling furring", "#b8895a", "06-200"],
+    ["carport", "Carport / porch beams & posts", "#8f6a43", "06-250"],
+  ]],
+  ["Envelope", [
+    ["sheathing", "ZIP wall sheathing", "#3f8f4e", "06-270"],
+    ["insulation", "Insulation (walls & ceiling)", "#f2a7b8", "07-100"],
+    ["siding_panel", "Fiber cement smooth panel", "#e9e6df", "07-150"],
+    ["siding_tg", "Fiber cement T&G (porch)", "#d9cdb8", "07-160"],
+    ["ext_ceiling", "Carport & porch ceilings", "#ece8de", "07-170"],
+    ["trim", "Fascia, soffit, trim & gutters", "#fafafa", "07-200"],
+  ]],
+  ["Roof", [
+    ["roof_sheathing", "ZIP roof sheathing", "#4c9a5a", "06-280"],
+    ["shingles", "Asphalt shingles (charcoal)", "#3a3d42", "07-130"],
+  ]],
+  ["Openings", [
+    ["windows", "Windows (vinyl) A/B/C/D", "#9cc4e4", "08-100"],
+    ["doors", "Doors 01-10", "#a0754a", "08-200"],
+  ]],
+  ["Interior", [
+    ["drywall", "Gypsum board walls & ceilings", "#f4f1ea", "09-100"],
+    ["casework", "Cabinets, tops & closet shelving", "#6f8a9e", "12-100"],
+    ["fixtures", "Plumbing fixtures & appliance spaces", "#ffffff", "22-100"],
+  ]],
+  ["MEP", [
+    ["mep", "HVAC, water heater & panel", "#8aa0b5", "23-100"],
+    ["lights", "Light fixtures (per RCP)", "#ffd36b", "26-300"],
+  ]],
+  ["Annotation", [
+    ["labels", "Room labels", "#1f5fa8", ""],
+  ]],
+];
+const L = {};
+const scene = new THREE.Scene();
+GROUPS.forEach(([g, items]) => items.forEach(([id, name, color, tid]) => {
+  const grp = new THREE.Group(); grp.name = id; scene.add(grp);
+  L[id] = { id, name, color, tid, group: grp, mat: mat(color) };
+}));
+
+function mat(color, opts) {
+  return new THREE.MeshStandardMaterial(Object.assign({ color, roughness: 0.85, metalness: 0.0 }, opts || {}));
+}
+const M = {
+  glass: mat("#8fbbe0", { transparent: true, opacity: 0.38, roughness: 0.1 }),
+  vinyl: mat("#f7f7f5"),
+  doorWood: mat("#a0754a"), doorPaint: mat("#f0eee8"), doorExt: mat("#2f3b46"),
+  insul: mat("#f2a7b8", { transparent: true, opacity: 0.55 }),
+  blown: mat("#f3e3a0", { transparent: true, opacity: 0.45 }),
+  steel: mat("#c8ccd1", { metalness: 0.4, roughness: 0.4 }),
+  gutter: mat("#f2f2f0", { roughness: 0.5 }),
+  street: mat("#55595e"), mulch: mat("#6b4a33"), shrub: mat("#5d8a4a"), trunk: mat("#6d5640"),
+  lightOn: new THREE.MeshStandardMaterial({ color: "#fff4cc", emissive: "#ffcc55", emissiveIntensity: 0.9 }),
+  fanBlade: mat("#6e5b48"),
+  duct: mat("#b7c3cf", { metalness: 0.3, roughness: 0.5 }),
+  counter: mat("#d9d4c7"),
+  porcelain: mat("#ffffff", { roughness: 0.3 }),
+  appliance: mat("#c9cdd2", { metalness: 0.3, roughness: 0.4 }),
+  topPlate: mat("#cfa56b"),
+  pt: mat("#9fae7a"),
+  header: mat("#c9935a"),
+  fill: mat("#a8825a", { transparent: true, opacity: 0.85 }),
+  lvl: mat("#b9864f"),
+};
+
+/* ---------------- geometry helpers ---------------- */
+const UB = new THREE.BoxGeometry(1, 1, 1);
+const all = [];
+function add(layer, mesh, meta) {
+  mesh.userData = Object.assign({ layer }, meta || {});
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  L[layer].group.add(mesh); all.push(mesh); return mesh;
+}
+function box(layer, x0, y0, z0, x1, y1, z1, meta, material) {
+  const m = new THREE.Mesh(UB, material || L[layer].mat);
+  m.scale.set(Math.max(Math.abs(x1 - x0), 0.01), Math.max(Math.abs(y1 - y0), 0.01), Math.max(Math.abs(z1 - z0), 0.01));
+  m.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+  return add(layer, m, meta);
+}
+// member in an x-y plane at depth z (trusses)
+function member(layer, x1, y1, x2, y2, z, depth, thick, meta, material) {
+  const len = Math.hypot(x2 - x1, y2 - y1);
+  const m = new THREE.Mesh(UB, material || L[layer].mat);
+  m.scale.set(len, depth, thick);
+  m.position.set((x1 + x2) / 2, (y1 + y2) / 2, z);
+  m.rotation.z = Math.atan2(y2 - y1, x2 - x1);
+  return add(layer, m, meta);
+}
+// sloped roof plane strip (left or right slope) between z0..z1, offset normal to slope
+function slopePlane(layer, side, sFrom, sTo, z0, z1, off, thick, meta, material) {
+  // side -1 = west slope, +1 = east slope. s measured along slope from eave edge (x=-EO / W+EO)
+  const ang = Math.atan(P);
+  const cos = Math.cos(ang), sin = Math.sin(ang);
+  const yEave = PL + HEEL - EO * P; // underside of top chord at overhang end
+  const sMid = (sFrom + sTo) / 2;
+  const nx = -side * -sin, ny = cos; // outward normal
+  let x = side < 0 ? -EO + sMid * cos : W + EO - sMid * cos;
+  let y = yEave + sMid * sin;
+  x += (side < 0 ? -sin : sin) * (off + thick / 2);
+  y += cos * (off + thick / 2);
+  const m = new THREE.Mesh(UB, material || L[layer].mat);
+  m.scale.set(sTo - sFrom, thick, z1 - z0);
+  m.position.set(x, y, (z0 + z1) / 2);
+  m.rotation.z = side < 0 ? ang : -ang;
+  return add(layer, m, meta);
+}
+function tri(layer, z, zDir, y0, rise, inset, meta, material) {
+  const s = new THREE.Shape();
+  s.moveTo(inset, 0); s.lineTo(W - inset, 0); s.lineTo(W / 2, rise - inset * P); s.lineTo(inset, 0);
+  const g = new THREE.ExtrudeGeometry(s, { depth: 0.05, bevelEnabled: false });
+  const m = new THREE.Mesh(g, material || L[layer].mat);
+  m.position.set(0, y0, zDir > 0 ? z : z - 0.05);
+  return add(layer, m, meta);
+}
+function ftin(v) {
+  const t = Math.round(Math.abs(v) * 12 * 4) / 4; const f = Math.floor(t / 12); const i = t - f * 12;
+  return `${f}'-${Number.isInteger(i) ? i : i.toFixed(2).replace(/0$/, "")}"`;
+}
+
+/* ---------------- openings ---------------- */
+const OPEN = {}; // wall/partition id -> [{u0,u1,v0,v1,...}]
+D.windows.forEach(([id, type, wall, c, w, h, sill]) => {
+  (OPEN[wall] = OPEN[wall] || []).push({ id, type, u0: c - w / 2, u1: c + w / 2, v0: sill, v1: sill + h, kind: "win" });
+});
+D.doors.forEach(([mark, type, wall, c, w, h, kind]) => {
+  (OPEN[wall] = OPEN[wall] || []).push({ id: mark, type, u0: c - w / 2, u1: c + w / 2, v0: 0, v1: h, kind });
+});
+function pieces(a0, a1, H, ops) {
+  const r = []; let cur = a0;
+  ops.filter(o => o.u1 > a0 && o.u0 < a1).sort((a, b) => a.u0 - b.u0).forEach(o => {
+    if (o.u0 > cur) r.push([cur, o.u0, 0, H]);
+    if (o.v0 > 0) r.push([o.u0, o.u1, 0, o.v0]);
+    if (o.v1 < H) r.push([o.u0, o.u1, o.v1, H]);
+    cur = Math.max(cur, o.u1);
+  });
+  if (cur < a1) r.push([cur, a1, 0, H]);
+  return r;
+}
+
+/* wall descriptor: axis ('z' = runs along z), c = outer-face coord, s = inward sign */
+const EXT = {
+  west: { axis: "z", c: 0, s: 1, a0: 0, a1: ZP },
+  east: { axis: "z", c: W, s: -1, a0: 0, a1: ZP },
+  north: { axis: "x", c: 0, s: 1, a0: ET, a1: W - ET },
+  south: { axis: "x", c: ZH, s: -1, a0: ET, a1: W - ET },
+};
+function wbox(layer, w, o0, o1, u0, u1, v0, v1, meta, material) {
+  const p0 = w.c + w.s * o0, p1 = w.c + w.s * o1;
+  if (w.axis === "z") return box(layer, Math.min(p0, p1), v0, u0, Math.max(p0, p1), v1, u1, meta, material);
+  return box(layer, u0, v0, Math.min(p0, p1), u1, v1, Math.max(p0, p1), meta, material);
+}
+function frameWall(layer, w, depth, o0, ops, meta, studOC) {
+  const T = 1.5 * IN, a0 = w.a0, a1 = w.a1;
+  const pt = layer === "framing_ext" ? "06-100" : "06-140";
+  wbox(layer, w, o0, o0 + depth, a0, a1, 0, T, { name: "Bottom plate, pressure-treated", tid: pt, spec: `PT ${layer === "framing_ext" ? "2x6" : "2x4"} sill/bottom plate on slab`, basis: "DIM wall length; plate type ASSUMED" }, M.pt);
+  wbox(layer, w, o0, o0 + depth, a0, a1, PL - 2 * T, PL, { name: "Double top plate", tid: layer === "framing_ext" ? "06-110" : "06-150", spec: "(2) top plates", basis: "T.O. plate 9'-0\" per A401" }, M.topPlate);
+  const inOpen = u => ops.some(o => u > o.u0 - 0.2 && u < o.u1 + 0.2);
+  const studs = [];
+  for (let u = a0 + T / 2; u < a1 - T / 2; u += studOC) studs.push(u);
+  studs.push(a1 - T / 2);
+  const studMeta = { name: `${layer === "framing_ext" ? "2x6" : "2x4"} stud @ 24\" O.C.`, tid: layer === "framing_ext" ? "06-120" : "06-160", spec: "SPF/SYP #2 precut stud, 104-5/8\" for 9' plate", basis: "24\" O.C. per design notes" };
+  studs.forEach(u => { if (!inOpen(u)) wbox(layer, w, o0, o0 + depth, u - T / 2, u + T / 2, T, PL - 2 * T, studMeta); });
+  ops.forEach(o => {
+    const hdr = layer === "framing_ext" ? 9.25 * IN : 5.5 * IN;
+    [o.u0 - 1.5 * T, o.u1 + 1.5 * T].forEach(u => wbox(layer, w, o0, o0 + depth, u - T / 2, u + T / 2, T, PL - 2 * T, { ...studMeta, name: "King stud" }));
+    [o.u0 - T / 2, o.u1 + T / 2].forEach(u => wbox(layer, w, o0, o0 + depth, u - T / 2, u + T / 2, T, o.v1, { ...studMeta, name: "Jack (trimmer) stud" }));
+    wbox(layer, w, o0, o0 + depth, o.u0 - T, o.u1 + T, o.v1, o.v1 + hdr, { name: `Header at opening ${o.id}`, tid: layer === "framing_ext" ? "06-130" : "06-170", spec: layer === "framing_ext" ? "(2) 2x10 header, sized ASSUMED (no structural drawings)" : "2x6 flat / built-up header (non-bearing)", basis: `Opening ${ftin(o.u1 - o.u0)} wide` }, M.header);
+    for (let u = o.u0 + 1.0; u < o.u1 - 0.1; u += studOC) {
+      if (o.v1 + hdr < PL - 2 * T) wbox(layer, w, o0, o0 + depth, u - T / 2, u + T / 2, o.v1 + hdr, PL - 2 * T, { ...studMeta, name: "Cripple stud (above header)" });
+      if (o.kind === "win") wbox(layer, w, o0, o0 + depth, u - T / 2, u + T / 2, T, o.v0 - T, { ...studMeta, name: "Cripple stud (below sill)" });
+    }
+    if (o.kind === "win") wbox(layer, w, o0, o0 + depth, o.u0, o.u1, o.v0 - T, o.v0, { ...studMeta, name: "Rough sill" });
+  });
+}
+
+/* ---------------- site ---------------- */
+const LOT = { x0: -21, x1: 29, z1: ZP + 25, z0: ZP + 25 - 180 };
+box("site", LOT.x0 - 40, -0.6, LOT.z0 - 30, LOT.x1 + 40, -0.45, LOT.z1, { name: "Lawn / finish grade (sod & seed)", tid: "32-210", spec: "Lot 50' x 180' per A100 site plan", basis: "SCALED from A100 (1/16\")" });
+box("site", LOT.x0 - 40, -0.6, LOT.z1 + 10, LOT.x1 + 40, -0.4, LOT.z1 + 40, { name: "Street (existing, by others)", tid: "—", spec: "Existing public street", basis: "A100" }, M.street);
+box("site", -4, -0.45, 0, -0.05, -0.3, ZP, { name: "Landscape bed (mulch) along west wall", tid: "32-200", spec: "4'-0\" bed with shrubs per A101", basis: "DIM 4'-0\" strip on A101" }, M.mulch);
+for (let i = 0; i < 12; i++) {
+  const g = new THREE.Mesh(new THREE.SphereGeometry(1.1, 12, 8), M.shrub);
+  g.position.set(-2, 0.5, 3 + i * 5.3); g.scale.set(1, 0.9, 1);
+  add("site", g, { name: "Shrub (landscape allowance)", tid: "32-200", spec: "Ornamental grass/shrub, 3 gal (ASSUMED)", basis: "Plant symbols counted on A101 (~12)" });
+}
+{
+  const t = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, 9, 8), M.trunk); t.position.set(14, 4, ZP + 12);
+  add("site", t, { name: "Front yard tree", tid: "32-200", spec: "Shade tree 30 gal (ASSUMED)", basis: "Tree symbol on A101/A100" });
+  const c = new THREE.Mesh(new THREE.SphereGeometry(5, 14, 10), M.shrub); c.position.set(14, 11, ZP + 12);
+  add("site", c, { name: "Front yard tree canopy", tid: "32-200", spec: "Shade tree", basis: "Tree symbol on A101/A100" });
+}
+// property line
+{
+  const pts = [[LOT.x0, LOT.z0], [LOT.x1, LOT.z0], [LOT.x1, LOT.z1], [LOT.x0, LOT.z1], [LOT.x0, LOT.z0]].map(([x, z]) => new THREE.Vector3(x, -0.25, z));
+  const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineDashedMaterial({ color: "#c0392b", dashSize: 3, gapSize: 1.5 }));
+  ln.computeLineDistances(); L.site.group.add(ln);
+}
+box("paving", -16, -0.45, -CD, -4, -0.12, ZP + 35, { name: "Concrete driveway, 12'-0\" wide", tid: "32-100", spec: "4\" concrete, fiber reinforced, broom finish (ASSUMED)", basis: "DIM 12'-0\" on A101; length SCALED from A100" });
+box("paving", -21, -0.45, -CD, -16, -0.12, 0, { name: "Concrete apron, 5' strip at carport", tid: "32-110", spec: "4\" concrete", basis: "DIM 5'-0\" on A101" });
+box("paving", -4, -0.45, -CD, 0, -0.12, 0, { name: "Concrete apron, 4' strip at carport", tid: "32-110", spec: "4\" concrete", basis: "DIM 4'-0\" on A101" });
+box("paving", -4, -0.45, ZP, 6.4, -0.12, ZP + 6, { name: "Front walk / landing pad", tid: "32-120", spec: "4\" concrete", basis: "SCALED ~10'-5\" x 6'-0\" from A101" });
+box("earth", -5, -1.6, -CD - 5, W + 5, -D.SLAB_T, ZP + 5, { name: "Select fill building pad (12\" avg.)", tid: "31-120", spec: "Compacted select fill, 5' beyond slab (ASSUMED - no geotech)", basis: "ASSUMED; verify with geotechnical report" }, M.fill);
+
+/* ---------------- foundation ---------------- */
+const ST = D.SLAB_T;
+box("slab", 0, -ST, 0, W, 0, ZH, { name: "Slab-on-grade, conditioned area (smooth trowel finished floor)", tid: "03-100", spec: "4\" slab, 3000 psi, smooth trowel + densifier/sealer per design notes", basis: "DIM 21'-0\" x 64'-2\"" });
+box("slab", 0, -ST - 0.02, ZH, W, -0.02, ZP, { name: "Front porch slab (smooth trowel, sloped)", tid: "03-100", spec: "4\" slab, slope away from house", basis: "DIM 21'-0\" x 5'-11\"" });
+box("slab", 0, -ST - 0.04, -CD, W, -0.04, 0, { name: "Covered parking slab", tid: "03-100", spec: "4\" slab, broom finish (ASSUMED)", basis: "DIM 21'-0\" x 24'-0\"" });
+const gb = { name: "Perimeter grade beam 12\"x24\" overall", tid: "03-110", spec: "12\" wide x 20\" below slab, (4) #5 cont. (ASSUMED - no structural)", basis: "ASSUMED typical NE Louisiana monolithic slab" };
+box("beams", 0, -ST - 1.667, -CD, 1, -ST, ZP, gb); box("beams", W - 1, -ST - 1.667, -CD, W, -ST, ZP, gb);
+box("beams", 1, -ST - 1.667, -CD, W - 1, -ST, -CD + 1, gb); box("beams", 1, -ST - 1.667, ZP - 1, W - 1, -ST, ZP, gb);
+const ib = { name: "Interior grade beam 12\"x20\" overall", tid: "03-120", spec: "12\" wide x 16\" below slab, (4) #5 cont. (ASSUMED)", basis: "ASSUMED layout ~20' grid" };
+[-12, 0, D.Z_MASTER, D.Z_BED2, ZH].forEach(z => box("beams", 1, -ST - 1.333, z - 0.5, W - 1, -ST, z + 0.5, ib));
+box("beams", W / 2 - 0.5, -ST - 1.333, -CD + 1, W / 2 + 0.5, -ST, ZP - 1, ib);
+[[0.75, -CD + 0.75], [W - 0.75, -CD + 0.75]].forEach(([x, z]) => box("beams", x - 1, -ST - 2, z - 1, x + 1, -ST, z + 1, { name: "Carport post footing 24\"x24\"x24\"", tid: "03-220", spec: "Spread footing w/ post base (ASSUMED)", basis: "Posts shown at carport corners on A101" }));
+
+/* ---------------- walls ---------------- */
+const SH = 7 / 16 * IN, S6 = 5.5 * IN, S4 = 3.5 * IN, GWB = 0.5 * IN;
+Object.entries(EXT).forEach(([k, w]) => {
+  const ops = OPEN[k] || [];
+  frameWall("framing_ext", w, S6, SH, ops, {}, D.STUD_OC_EXT);
+  // sheathing (outside of studs), full wall
+  pieces(w.axis === "z" ? w.a0 : 0, w.axis === "z" ? w.a1 : W, PL, ops).forEach(([u0, u1, v0, v1]) =>
+    wbox("sheathing", w, 0, SH, u0, u1, v0, v1, { name: "ZIP System 7/16\" wall sheathing", tid: "06-270", spec: "Huber ZIP System wall panel, taped seams (design notes)", basis: `${k} wall` }));
+  // drywall + insulation only inside the conditioned envelope
+  const c0 = w.axis === "z" ? ET : ET, c1 = w.axis === "z" ? ZH - ET : W - ET;
+  pieces(c0, c1, PL, ops).forEach(([u0, u1, v0, v1]) => {
+    wbox("drywall", w, SH + S6, SH + S6 + GWB, u0, u1, v0, v1, { name: "1/2\" gypsum board, Level 3, painted", tid: "09-100", spec: "Walls: gypsum, painted, level 3 finish (design notes)", basis: "Exterior wall, interior face" });
+    wbox("insulation", w, SH + 0.05, SH + S6 - 0.05, u0, u1, v0, Math.min(v1, PL - 0.25), { name: "R-21 2x6 wall batt (or equal)", tid: "07-100", spec: "Fiberglass batt, unfaced (R-value ASSUMED)", basis: "Conditioned exterior walls" }, M.insul);
+  });
+  // cladding
+  if (k === "south") {
+    pieces(0, W, PL, ops).forEach(([u0, u1, v0, v1]) => wbox("siding_tg", w, -0.06, 0, u0, u1, v0, v1, { name: "Fiber cement T&G siding (porch wall)", tid: "07-160", spec: "Fiber cement T&G siding, painted (A401 Elev B)", basis: "Wall facing front porch" }));
+  } else {
+    pieces(w.axis === "z" ? w.a0 : 0, w.axis === "z" ? w.a1 : W, PL, ops).forEach(([u0, u1, v0, v1]) => wbox("siding_panel", w, -0.06, 0, u0, u1, v0, v1, { name: "Fiber cement smooth panel siding", tid: "07-150", spec: "4x9 smooth fiber cement panel, painted (A401)", basis: `${k} elevation` }));
+  }
+  if (w.axis === "z") { // porch-side inner faces get T&G
+    wbox("siding_tg", w, SH + S6, SH + S6 + 0.06, ZH, ZP, 0, PL, { name: "Fiber cement T&G siding (porch side wall)", tid: "07-160", spec: "T&G continued at porch (design notes)", basis: "Porch side wall inner face" });
+  }
+});
+// vertical panel joint battens on long walls every 8'
+["west", "east"].forEach(k => { const w = EXT[k]; for (let u = 8; u < ZP; u += 8) { if ((OPEN[k] || []).some(o => u > o.u0 - 0.2 && u < o.u1 + 0.2)) continue; wbox("siding_panel", w, -0.1, -0.06, u - 0.06, u + 0.06, 0, PL, { name: "Panel joint trim", tid: "07-150", spec: "Joint batten / trim (ASSUMED from A401 joint lines)", basis: "A401 Elev C/D" }); } });
+// gable triangles exposed under vaulted carport & porch ceilings
+tri("siding_panel", 0, -1, PL, D.W / 2 * P, 0, { name: "Gable infill above laundry wall (smooth panel)", tid: "07-150", spec: "Smooth panel, faces carport (A401 Elev A)", basis: "Exposed under vaulted carport ceiling" });
+tri("siding_tg", ZH, 1, PL, D.W / 2 * P, 0, { name: "Gable infill above living wall (T&G)", tid: "07-160", spec: "T&G, faces porch (A401 Elev B)", basis: "Exposed under vaulted porch ceiling" });
+tri("sheathing", SH, 1, PL, D.W / 2 * P, 0.1, { name: "ZIP sheathing, gable infill", tid: "06-270", spec: "ZIP wall panel", basis: "Gable" });
+tri("sheathing", ZH - SH, -1, PL, D.W / 2 * P, 0.1, { name: "ZIP sheathing, gable infill", tid: "06-270", spec: "ZIP wall panel", basis: "Gable" });
+
+/* interior partitions */
+Object.entries(D.partitions).forEach(([pid, [x0, z0, x1, z1]]) => {
+  const axis = Math.abs(x1 - x0) < 0.01 ? "z" : "x";
+  const c = axis === "z" ? x0 - S4 / 2 : z0 - S4 / 2;
+  const w = { axis, c, s: 1, a0: axis === "z" ? z0 : x0, a1: axis === "z" ? z1 : x1 };
+  const ops = OPEN[pid] || [];
+  frameWall("framing_int", w, S4, 0, ops, {}, D.STUD_OC_INT);
+  pieces(w.a0, w.a1, PL, ops).forEach(([u0, u1, v0, v1]) => {
+    const m = { name: `1/2\" gypsum board, partition ${pid}`, tid: "09-100", spec: "Gypsum, painted, level 3 (level 2 in storage)", basis: `Partition ${pid}, both faces` };
+    wbox("drywall", w, -GWB, 0, u0, u1, v0, v1, m); wbox("drywall", w, S4, S4 + GWB, u0, u1, v0, v1, m);
+  });
+});
+
+/* ---------------- openings: windows & doors ---------------- */
+function placeOpening(wall, o, isExt) {
+  const w = EXT[wall] || (() => { const [x0, z0, x1, z1] = D.partitions[wall]; const axis = Math.abs(x1 - x0) < 0.01 ? "z" : "x"; return { axis, c: axis === "z" ? x0 - S4 / 2 : z0 - S4 / 2, s: 1 }; })();
+  const dep = isExt ? SH + S6 : S4;
+  if (o.kind === "win") {
+    const info = { A: "Vinyl sliding 6'-0\" x 4'-0\"", B: "Vinyl casement 6'-0\" x 4'-0\"", C: "Vinyl single hung 2'-0\" x 4'-0\"", D: "Vinyl single hung 3'-0\" x 5'-0\"" }[o.type];
+    const tid = { A: "08-100", B: "08-110", C: "08-120", D: "08-130" }[o.type];
+    const meta = { name: `Window ${o.id} (Type ${o.type})`, tid, spec: info + ", sill 3'-0\" AFF", basis: "A701 window schedule; location SCALED from A101" };
+    const f = 0.15, m0 = 0.1, m1 = dep * 0.55;
+    wbox("windows", w, m0, m1, o.u0, o.u1, o.v0, o.v0 + f, meta, M.vinyl);
+    wbox("windows", w, m0, m1, o.u0, o.u1, o.v1 - f, o.v1, meta, M.vinyl);
+    wbox("windows", w, m0, m1, o.u0, o.u0 + f, o.v0, o.v1, meta, M.vinyl);
+    wbox("windows", w, m0, m1, o.u1 - f, o.u1, o.v0, o.v1, meta, M.vinyl);
+    if (o.type === "A" || o.type === "B") wbox("windows", w, m0, m1, (o.u0 + o.u1) / 2 - f / 2, (o.u0 + o.u1) / 2 + f / 2, o.v0, o.v1, meta, M.vinyl);
+    if (o.type === "C" || o.type === "D") wbox("windows", w, m0, m1, o.u0, o.u1, (o.v0 + o.v1) / 2 - f / 2, (o.v0 + o.v1) / 2 + f / 2, meta, M.vinyl);
+    wbox("windows", w, (m0 + m1) / 2 - 0.02, (m0 + m1) / 2 + 0.02, o.u0 + f, o.u1 - f, o.v0 + f, o.v1 - f, meta, M.glass);
+    if (isExt) { // exterior casing trim
+      const tm = { name: `Exterior window trim, ${o.id}`, tid: "07-210", spec: "5/4x4 fiber cement trim (ASSUMED)", basis: "A401" };
+      wbox("trim", w, -0.12, -0.06, o.u0 - 0.33, o.u1 + 0.33, o.v1, o.v1 + 0.33, tm);
+      wbox("trim", w, -0.12, -0.06, o.u0 - 0.33, o.u1 + 0.33, o.v0 - 0.15, o.v0, tm);
+    }
+  } else {
+    const names = { R1: "Exterior entry w/ sidelite 4'-0\" x 8'-0\"", R2: "Exterior entry 3'-0\" x 6'-8\" (half-lite)", R3: "Interior swing 2'-8\" x 6'-8\" shaker", R4: "Interior bypass slider 6'-0\" x 6'-8\" (2-panel)", R5: "Exterior swing 3'-0\" x 6'-8\" (flush)" };
+    const tid = { R1: "08-200", R2: "08-210", R3: "08-230", R4: "08-240", R5: "08-220" }[o.type];
+    const meta = { name: `Door ${o.id} (Type ${o.type})`, tid, spec: names[o.type] + ", wood frame", basis: "A701 door schedule; location SCALED from A101" };
+    const mat_ = o.kind.startsWith("ext") ? M.doorExt : M.doorPaint;
+    const jm = { ...meta, name: `Door ${o.id} frame/jamb` };
+    wbox("doors", w, 0, dep, o.u0, o.u0 + 0.08, 0, o.v1, jm, M.doorWood);
+    wbox("doors", w, 0, dep, o.u1 - 0.08, o.u1, 0, o.v1, jm, M.doorWood);
+    wbox("doors", w, 0, dep, o.u0, o.u1, o.v1 - 0.08, o.v1, jm, M.doorWood);
+    if (o.type === "R1") {
+      wbox("doors", w, dep * 0.4, dep * 0.4 + 0.15, o.u0 + 0.08, o.u0 + 3.0, 0, o.v1 - 0.08, meta, mat_);
+      wbox("doors", w, dep * 0.4, dep * 0.4 + 0.15, o.u0 + 3.08, o.u1 - 0.08, 0.2, o.v1 - 0.2, { ...meta, name: "Door 01 sidelite" }, M.glass);
+    } else if (o.type === "R4") {
+      const mid = (o.u0 + o.u1) / 2;
+      wbox("doors", w, dep * 0.15, dep * 0.15 + 0.11, o.u0 + 0.08, mid + 0.1, 0.03, o.v1 - 0.1, meta, mat_);
+      wbox("doors", w, dep * 0.6, dep * 0.6 + 0.11, mid - 0.1, o.u1 - 0.08, 0.03, o.v1 - 0.1, meta, mat_);
+    } else {
+      wbox("doors", w, dep * 0.45, dep * 0.45 + 0.15, o.u0 + 0.08, o.u1 - 0.08, 0.03, o.v1 - 0.08, meta, mat_);
+    }
+  }
+}
+Object.entries(OPEN).forEach(([wall, ops]) => ops.forEach(o => placeOpening(wall, o, !!EXT[wall])));
+
+/* ---------------- roof structure ---------------- */
+const yTop = x => PL + HEEL + Math.min(x, W - x) * P; // underside of top chord at x (0..W)
+const RX = W / 2, RY = PL + HEEL + RX * P;
+D.trusses.forEach(([type, z]) => {
+  const zz = Math.min(Math.max(z, -CD + 0.1), ZP - 0.1);
+  const tid = "06-190";
+  const meta = { name: type === "common" ? "Common truss 6/12, 21' span, flat bottom chord" : type === "vaulted" ? "Vaulted (parallel-chord) truss 6/12 - sloped ceiling" : "End truss at open gable (vaulted)", tid, spec: "Cambered roof truss @ 4' O.C. (design notes); profile ASSUMED - truss mfr. to design", basis: `Truss at z = ${ftin(z)}` };
+  const d = 3.5 * IN, t = 1.5 * IN;
+  member("trusses", -EO, PL + HEEL - EO * P + d / 2, RX, RY + d / 2, zz, d, t, meta);
+  member("trusses", RX, RY + d / 2, W + EO, PL + HEEL - EO * P + d / 2, zz, d, t, meta);
+  if (type === "common") {
+    member("trusses", 0, PL + d / 2, W, PL + d / 2, zz, d, t, meta);
+    const q = [W / 4, W / 2, 3 * W / 4];
+    member("trusses", W / 3, PL + d, q[0] - 0.4, yTop(q[0] - 0.4), zz, d * 0.8, t, meta);
+    member("trusses", W / 3, PL + d, RX, RY - 0.1, zz, d * 0.8, t, meta);
+    member("trusses", 2 * W / 3, PL + d, RX, RY - 0.1, zz, d * 0.8, t, meta);
+    member("trusses", 2 * W / 3, PL + d, q[2] + 0.4, yTop(q[2] + 0.4), zz, d * 0.8, t, meta);
+    member("trusses", 0.2, PL + d, 0.2, PL + HEEL + 0.1, zz, t, t, meta);
+    member("trusses", W - 0.2, PL + d, W - 0.2, PL + HEEL + 0.1, zz, t, t, meta);
+  } else {
+    member("trusses", 0, yTop(0) - TD, RX, RY - TD, zz, d, t, meta);
+    member("trusses", RX, RY - TD, W, yTop(W) - TD, zz, d, t, meta);
+    [2, 5, 8, 13, 16, 19].forEach(x => member("trusses", x, yTop(x) - TD, x, yTop(x), zz, d * 0.8, t, meta));
+  }
+});
+// carport & porch beams / posts
+const bm = { name: "Carport eave beam, 3-1/2\" x 14\" LVL (ASSUMED - engineer to size)", tid: "06-250", spec: "24' clear span along carport eave", basis: "No structural drawings; posts only at carport corners (A101/A401)" };
+box("carport", 0, PL - 14 * IN, -CD, 0.3, PL, 0, bm, M.lvl);
+box("carport", W - 0.3, PL - 14 * IN, -CD, W, PL, 0, bm, M.lvl);
+box("carport", 0, PL - 14 * IN, ZP - 0.3, W, PL, ZP, { ...bm, name: "Porch front beam, 3-1/2\" x 14\" LVL (ASSUMED)", basis: "Open porch front, 21' span between side walls" }, M.lvl);
+[[0.25, -CD + 0.25], [W - 0.25, -CD + 0.25]].forEach(([x, z]) => box("carport", x - 0.23, 0, z - 0.23, x + 0.23, PL - 14 * IN, z + 0.23, { name: "6x6 PT post, wrapped (ASSUMED)", tid: "06-260", spec: "Post w/ standoff base", basis: "Post symbols at carport corners on A101" }, M.lvl));
+
+// purlins on top of top chords (2x4 flat @ 24"), roof sheathing & shingles
+const sLen = (W / 2 + EO) * Math.sqrt(1 + P * P);
+const z0r = -CD - RO, z1r = ZP + RO;
+[-1, 1].forEach(side => {
+  for (let s = 0.2; s < sLen; s += 2) slopePlane("purlins", side, s, s + 3.5 * IN, z0r + 0.5, z1r - 0.5, 3.5 * IN, 1.5 * IN, { name: "2x4 roof purlin @ 24\" O.C. (flat)", tid: "06-200", spec: "Required to span 5/8\" ZIP roof at 48\" truss spacing (ASSUMED - see RFI)", basis: "Design notes: trusses 4' O.C." });
+  slopePlane("roof_sheathing", side, 0, sLen, z0r, z1r, 3.5 * IN + 1.5 * IN, 0.052, { name: "ZIP System 5/8\" roof sheathing", tid: "06-280", spec: "Huber ZIP roof, taped seams", basis: "6/12 pitch, 1' eave & rake overhang (ASSUMED)" });
+  slopePlane("shingles", side, 0, sLen, z0r, z1r, 3.5 * IN + 1.5 * IN + 0.052, 0.06, { name: "Architectural asphalt shingles, charcoal", tid: "07-130", spec: "Laminated asphalt shingle, black/charcoal (design notes)", basis: "Roof area 6/12" });
+});
+// ridge cap
+{
+  const m = new THREE.Mesh(UB, L.shingles.mat); m.scale.set(1.0, 0.12, z1r - z0r); m.position.set(RX, RY + 0.47, (z0r + z1r) / 2);
+  add("shingles", m, { name: "Ridge cap / ridge vent", tid: "07-140", spec: "Hip & ridge cap; ridge vent over conditioned attic", basis: "Ridge length" });
+}
+// ceiling furring under trusses (conditioned area) @ 24"
+for (let x = ET + 1; x < W - ET; x += 2) box("purlins", x - 0.06, PL - 1.5 * IN, ET, x + 0.06, PL, ZH - ET, { name: "2x4 ceiling furring @ 24\" O.C.", tid: "06-210", spec: "Furring/strongback for 5/8\" GWB at 48\" truss spacing (ASSUMED)", basis: "Design notes: trusses 4' O.C." });
+
+/* ---------------- ceilings & insulation ---------------- */
+D.rooms.forEach(([name, x0, z0, x1, z1, ch]) => {
+  if (ch == null) return;
+  box("drywall", x0, ch - 0.05, z0, x1, ch, z1, { name: `5/8\" gypsum ceiling - ${name} @ ${ftin(ch)}`, tid: "09-110", spec: name === "STORAGE" ? "Gypsum level 2 (design notes)" : "Gypsum, painted, level 3 (design notes)", basis: "Ceiling height per A101 RCP" });
+});
+box("insulation", ET, PL + 0.02, ET, W - ET, PL + 1.1, ZH - ET, { name: "Blown fiberglass ceiling insulation R-38", tid: "07-110", spec: "Loose-fill R-38 (R-value ASSUMED)", basis: "Conditioned footprint" }, M.blown);
+// vaulted ceilings (carport FC panel, porch T&G)
+[["ext_ceiling", -CD, 0, "Fiber cement panel ceiling, covered parking (sloped)", "07-180", "Design notes: covered parking fiber cement panel ceiling"],
+ ["ext_ceiling", ZH, ZP, "Fiber cement T&G ceiling, front porch (sloped)", "07-170", "Design notes: porch ceiling fiber cement T&G"]].forEach(([ly, za, zb, nm, tid, sp]) => {
+  [-1, 1].forEach(side => slopePlane(ly, side, EO * Math.sqrt(1 + P * P), sLen, za, zb, -TD - 0.05, 0.05, { name: nm, tid, spec: sp, basis: "RCP shows 6\"/1'-0\" sloped ceiling" }));
+});
+
+/* ---------------- fascia, soffit, gutters ---------------- */
+const yE = PL + HEEL - EO * P;
+[-1, 1].forEach(side => {
+  const xf = side < 0 ? -EO : W + EO;
+  box("trim", xf - 0.05 * (side < 0 ? 1 : -1), yE - 0.55, z0r, xf, yE + 0.35, z1r, { name: "Fiber cement fascia (eave)", tid: "07-200", spec: "5/4x6 fiber cement fascia, painted (A401)", basis: "Eave length" });
+  box("trim", side < 0 ? -EO : W, yE - 0.55, z0r, side < 0 ? 0 : W + EO, yE - 0.5, z1r, { name: "Fiber cement vented soffit", tid: "07-190", spec: "Vented FC soffit, 12\" (ASSUMED overhang)", basis: "Eave" });
+  const g = box("trim", side < 0 ? xf - 0.42 : xf, yE - 0.4, z0r, side < 0 ? xf : xf + 0.42, yE - 0.0, z1r, { name: "5\" seamless aluminum gutter", tid: "07-220", spec: "K-style gutter (shown on A401)", basis: "Eave length" }, M.gutter);
+  [z0r + 0.6, z1r - 0.6].forEach(z => box("trim", side < 0 ? xf - 0.32 : xf + 0.1, 0, z - 0.12, side < 0 ? xf - 0.1 : xf + 0.32, yE - 0.4, z + 0.12, { name: "Downspout 2x3", tid: "07-220", spec: "Aluminum downspout w/ splash block", basis: "ASSUMED 4 locations (+2 at mid-length)" }, M.gutter));
+});
+[z0r, z1r].forEach(z => [-1, 1].forEach(side => {
+  const x0 = side < 0 ? -EO : W + EO; const len = sLen;
+  const ang = Math.atan(P);
+  const m = new THREE.Mesh(UB, L.trim.mat); m.scale.set(len, 0.55, 0.08);
+  m.position.set((x0 + RX) / 2 + (side < 0 ? -0.15 : 0.15), (yE + RY) / 2 + 0.1, z + (z < 0 ? -0.02 : 0.02)); m.rotation.z = side < 0 ? ang : -ang;
+  add("trim", m, { name: "Fiber cement rake fascia", tid: "07-200", spec: "5/4x6 FC rake board, painted", basis: "Rake length" });
+}));
+// corner boards
+[[0, 0], [W, 0], [0, ZP], [W, ZP]].forEach(([x, z]) => box("trim", x - 0.17, 0, z - 0.17, x + 0.17, PL, z + 0.17, { name: "Fiber cement corner board", tid: "07-210", spec: "5/4x4 corner trim", basis: "A401" }));
+
+/* ---------------- casework, fixtures, MEP ---------------- */
+D.fixtures.forEach(([name, layer, x0, z0, x1, z1, y0, y1, tid]) => {
+  let material = undefined;
+  if (/countertop/i.test(name)) material = M.counter;
+  else if (/toilet|tub|sink/i.test(name)) material = M.porcelain;
+  else if (/owner/i.test(name)) material = M.appliance;
+  box(layer, x0, y0, z0, x1, y1, z1, { name, tid, spec: tid.startsWith("11") ? "Owner supplied (design notes); contractor provides hookups" : layer === "casework" ? "Frameless boxes, shaker doors; laminate tops (design notes)" : "See estimate", basis: "SCALED from A101 plan symbols" }, material);
+});
+box("mep", 1.5, PL + 0.3, 6, 3.2, PL + 1.3, ZH - 4, { name: "Supply trunk duct (route ASSUMED)", tid: "23-110", spec: "Insulated duct board/flex system, 2-ton", basis: "No mechanical drawings - route assumed" }, M.duct);
+box("mep", W, 3.5, 3.0, W + 0.35, 5.0, 4.2, { name: "Electric meter base", tid: "26-100", spec: "200A meter/main (ASSUMED)", basis: "No electrical drawings" }, M.steel);
+// lights
+const canG = new THREE.CylinderGeometry(0.28, 0.28, 0.08, 16);
+const ceilAt = (x, z) => {
+  if (z < 0 || z > ZH) return yTop(x) - TD - 0.06; // vaulted ceilings
+  const r = D.rooms.find(([n, x0, z0, x1, z1, ch]) => ch && x >= x0 && x <= x1 && z >= z0 && z <= z1);
+  return (r ? r[5] : PL) - 0.06;
+};
+D.lights.forEach(([name, x, z, kind]) => {
+  const y = ceilAt(x, z);
+  const tid = kind === "fan" ? "26-320" : kind === "pendant" ? "26-310" : "26-300";
+  const meta = { name, tid, spec: kind === "fan" ? "Ceiling fan w/ light kit" : kind === "pendant" ? "Pendant over island (A101 RCP note)" : "6\" LED recessed wafer light", basis: "A101 reflected ceiling plan" };
+  if (kind === "pendant") {
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.45, 0.6, 16), M.lightOn); m.position.set(x, 6.6, z); add("lights", m, meta);
+    box("lights", x - 0.02, 6.9, z - 0.02, x + 0.02, y, z + 0.02, meta, M.steel);
+  } else if (kind === "fan") {
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.35, 16), M.lightOn); hub.position.set(x, y - 0.6, z); add("lights", hub, meta);
+    for (let i = 0; i < 4; i++) { const b = new THREE.Mesh(UB, M.fanBlade); b.scale.set(2.2, 0.04, 0.45); b.position.set(x + Math.cos(i * Math.PI / 2) * 1.2, y - 0.55, z + Math.sin(i * Math.PI / 2) * 1.2); b.rotation.y = -i * Math.PI / 2; add("lights", b, meta); }
+    box("lights", x - 0.04, y - 0.45, z - 0.04, x + 0.04, y, z + 0.04, meta, M.steel);
+  } else {
+    const m = new THREE.Mesh(canG, M.lightOn); m.position.set(x, y, z); add("lights", m, meta);
+  }
+});
+[[-EO / 2, 10], [-EO / 2, 32], [-EO / 2, 54], [W + EO / 2, 10], [W + EO / 2, 32], [W + EO / 2, 54]].forEach(([x, z]) => {
+  const m = new THREE.Mesh(canG, M.lightOn); m.position.set(x, yE - 0.58, z);
+  add("lights", m, { name: "Soffit downlight (exterior)", tid: "26-330", spec: "Wet-rated LED soffit light (design notes: down lighting from soffits)", basis: "Count ASSUMED (6)" });
+});
+{
+  const m = new THREE.Mesh(UB, M.lightOn); m.scale.set(0.4, 0.8, 0.2); m.position.set(5.4, 7.2, ZH + 0.1);
+  add("lights", m, { name: "Wall light by front door", tid: "26-330", spec: "Exterior wall sconce (design notes)", basis: "Design notes" });
+}
+
+/* ---------------- room labels ---------------- */
+function label(text, x, y, z) {
+  const cv = document.createElement("canvas"); cv.width = 512; cv.height = 96;
+  const g = cv.getContext("2d");
+  g.fillStyle = "rgba(255,255,255,0.86)"; g.fillRect(0, 0, 512, 96);
+  g.strokeStyle = "#1f5fa8"; g.lineWidth = 4; g.strokeRect(2, 2, 508, 92);
+  g.fillStyle = "#1d2733"; g.font = "600 44px 'Barlow Condensed', Arial Narrow, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
+  g.fillText(text, 256, 50);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), depthTest: false }));
+  sp.scale.set(7, 1.3, 1); sp.position.set(x, y, z); sp.renderOrder = 10; sp.userData.noPick = true;
+  L.labels.group.add(sp);
+}
+D.rooms.forEach(([name, x0, z0, x1, z1]) => label(name, (x0 + x1) / 2, 5.2, (z0 + z1) / 2));
+
+/* ---------------- renderer ---------------- */
+const canvas = document.getElementById("c");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.localClippingEnabled = true;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const camera = new THREE.PerspectiveCamera(38, 1, 0.5, 3000);
+const controls = new THREE.OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.08; controls.maxPolarAngle = Math.PI * 0.495;
+scene.add(new THREE.HemisphereLight(0xf4f7ff, 0x8a7f70, 0.95));
+const sun = new THREE.DirectionalLight(0xffffff, 0.6);
+sun.position.set(-60, 90, 90); sun.target.position.set(W / 2, 0, 23); scene.add(sun, sun.target);
+sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -80, right: 80, top: 80, bottom: -80, near: 10, far: 300 });
+sun.shadow.bias = -0.0008;
+const clip = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1000);
+const allMats = new Set(); scene.traverse(o => { if (o.material) allMats.add(o.material); });
+allMats.forEach(m => { m.clippingPlanes = [clip]; m.clipShadows = true; });
+
+function setBg() {
+  const v = getComputedStyle(document.documentElement).getPropertyValue("--scene").trim() || "#dfe5eb";
+  scene.background = new THREE.Color(v);
+}
+setBg();
+try {
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", setBg);
+  new MutationObserver(setBg).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+} catch (e) {}
+
+const HOME = { pos: new THREE.Vector3(-62, 38, 118), tgt: new THREE.Vector3(W / 2, 4, 26) };
+function resetView() { camera.position.copy(HOME.pos); controls.target.copy(HOME.tgt); controls.update(); }
+function planView() { camera.position.set(W / 2 + 0.01, 150, 23.5); controls.target.set(W / 2, 0, 23); controls.update(); }
+resetView();
+
+function resize() {
+  const r = canvas.parentElement.getBoundingClientRect();
+  renderer.setSize(r.width, r.height, false); camera.aspect = r.width / Math.max(r.height, 1); camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(canvas.parentElement); resize();
+(function loop() { controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); })();
+
+/* ---------------- UI: layers & presets ---------------- */
+let sel = null, selMat = null, down = null;
+const layersEl = document.getElementById("layers");
+const boxes = {};
+GROUPS.forEach(([gname, items]) => {
+  const g = document.createElement("div"); g.className = "group";
+  const head = document.createElement("div"); head.className = "group-head";
+  const h3 = document.createElement("h3"); h3.textContent = gname; head.appendChild(h3);
+  const tg = document.createElement("button"); tg.type = "button"; tg.textContent = "Toggle";
+  tg.addEventListener("click", () => { const on = !items.every(([id]) => L[id].group.visible); items.forEach(([id]) => setLayer(id, on)); });
+  head.appendChild(tg); g.appendChild(head);
+  items.forEach(([id, name, color, tid]) => {
+    const row = document.createElement("label"); row.className = "layer"; row.htmlFor = "ly-" + id;
+    const cb = document.createElement("input"); cb.type = "checkbox"; cb.id = "ly-" + id; cb.checked = true;
+    cb.addEventListener("change", () => setLayer(id, cb.checked));
+    const sw = document.createElement("span"); sw.className = "sw"; sw.style.background = color;
+    const tx = document.createElement("span"); tx.className = "nm"; tx.textContent = name;
+    const q = document.createElement("span"); q.className = "q"; q.textContent = (tid ? tid + " · " : "") + (Q[id] || `${L[id].group.children.length} elements`);
+    tx.appendChild(q); row.append(cb, sw, tx); g.appendChild(row); boxes[id] = cb;
+  });
+  layersEl.appendChild(g);
+});
+function setLayer(id, on) { L[id].group.visible = on; if (boxes[id]) boxes[id].checked = on; if (sel && sel.userData.layer === id && !on) deselect(); }
+const ALL = Object.keys(L);
+const PRESETS = [
+  ["Complete", ALL.filter(k => k !== "earth" && k !== "labels")],
+  ["Exterior finish", ["site", "paving", "slab", "siding_panel", "siding_tg", "ext_ceiling", "trim", "shingles", "roof_sheathing", "windows", "doors", "carport", "lights"]],
+  ["Framing", ["slab", "beams", "framing_ext", "framing_int", "trusses", "purlins", "carport"]],
+  ["Dried-in shell", ["slab", "beams", "framing_ext", "framing_int", "trusses", "purlins", "carport", "sheathing", "roof_sheathing", "windows", "doors"]],
+  ["Interior", ["slab", "drywall", "casework", "fixtures", "doors", "windows", "lights", "labels", "mep"]],
+  ["Foundation", ["earth", "slab", "beams", "paving"]],
+  ["MEP & insulation", ["slab", "framing_ext", "insulation", "mep", "lights", "fixtures", "trusses"]],
+];
+const presetsEl = document.getElementById("presets");
+const chips = [];
+PRESETS.forEach(([name, on], i) => {
+  const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = name;
+  b.setAttribute("aria-pressed", i === 0 ? "true" : "false");
+  b.addEventListener("click", () => { applyPreset(on); chips.forEach(c => c.setAttribute("aria-pressed", c === b ? "true" : "false")); });
+  presetsEl.appendChild(b); chips.push(b);
+});
+function applyPreset(on) { ALL.forEach(id => setLayer(id, on.includes(id))); if (on.includes("drywall") && !on.includes("shingles")) { const cut = document.getElementById("cut"); cut.value = 7.5; onCut(); } }
+applyPreset(PRESETS[0][1]);
+
+/* section cut */
+const cutEl = document.getElementById("cut"), cutV = document.getElementById("cut-v");
+function onCut() { const v = +cutEl.value; clip.constant = v >= 20 ? 1000 : v; cutV.textContent = v >= 20 ? "off" : ftin(v); }
+cutEl.addEventListener("input", onCut);
+document.getElementById("b-reset").addEventListener("click", resetView);
+document.getElementById("b-top").addEventListener("click", planView);
+
+/* ---------------- selection ---------------- */
+const ray = new THREE.Raycaster(); const ptr = new THREE.Vector2();
+const hidden = [];
+const info = document.getElementById("info"), hint = document.getElementById("hint");
+const hiMat = new THREE.MeshStandardMaterial({ color: getComputedStyle(document.documentElement).getPropertyValue("--sel").trim() || "#e08a00", emissive: "#a35a00", emissiveIntensity: 0.35 });
+hiMat.clippingPlanes = [clip];
+canvas.addEventListener("pointerdown", e => { down = [e.clientX, e.clientY]; });
+canvas.addEventListener("pointerup", e => {
+  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5 || e.button !== 0) return;
+  const r = canvas.getBoundingClientRect();
+  ptr.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  const vis = all.filter(m => m.visible && m.parent.visible);
+  const hits = ray.intersectObjects(vis, false).filter(h => clip.constant > 999 || h.point.y <= clip.constant + 0.01);
+  if (hits.length) select(hits[0].object); else deselect();
+});
+function select(m) {
+  deselect(); sel = m; selMat = m.material; m.material = hiMat;
+  const u = m.userData, bb = new THREE.Box3().setFromObject(m), s = bb.getSize(new THREE.Vector3());
+  document.getElementById("i-name").textContent = u.name || "Element";
+  document.getElementById("i-layer").textContent = L[u.layer].name;
+  document.getElementById("i-tid").textContent = u.tid || "—";
+  document.getElementById("i-spec").textContent = u.spec || "—";
+  document.getElementById("i-size").textContent = `${ftin(s.x)} × ${ftin(s.z)} × ${ftin(s.y)} (E-W × N-S × H)`;
+  document.getElementById("i-basis").textContent = u.basis || "—";
+  info.hidden = false; hint.hidden = true;
+}
+function deselect() { if (sel) { sel.material = selMat; sel = null; } info.hidden = true; hint.hidden = false; }
+document.getElementById("b-close").addEventListener("click", deselect);
+document.getElementById("b-hide").addEventListener("click", () => { if (sel) { const m = sel; deselect(); m.visible = false; hidden.push(m); } });
+document.getElementById("b-unhide").addEventListener("click", () => { hidden.splice(0).forEach(m => m.visible = true); });
+document.getElementById("b-iso").addEventListener("click", () => { if (!sel) return; const id = sel.userData.layer; ALL.forEach(k => setLayer(k, k === id)); chips.forEach(c => c.setAttribute("aria-pressed", "false")); });
+canvas.addEventListener("keydown", e => { if (e.key === "Escape") deselect(); });
+})();
+</script>
