@@ -2305,6 +2305,19 @@ function showScreen(name) {
   for (const s of SCREENS) $('scr-' + s).classList.toggle('hidden', s !== name);
   if (name === 'campaign') renderMissionList();
 }
+// main-menu option descriptions (hover or keyboard focus)
+const menuDesc = $('menu-desc');
+// touch screens can't hover, so give them a one-line overview instead
+if (window.matchMedia && window.matchMedia('(hover: none)').matches) menuDesc.textContent = 'Campaign: story missions · Skirmish: one custom battle · How to Play: controls and rules.';
+const menuDescDefault = menuDesc.textContent;
+document.querySelectorAll('.title-panel [data-desc]').forEach((b) => {
+  const show = () => { menuDesc.textContent = b.dataset.desc; menuDesc.classList.add('active'); };
+  const hide = () => { menuDesc.textContent = menuDescDefault; menuDesc.classList.remove('active'); };
+  b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') show(); });
+  b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') hide(); });
+  b.addEventListener('focus', show);
+  b.addEventListener('blur', hide);
+});
 document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => { Sound.init(); showScreen(b.dataset.go); }));
 
 function renderMissionList() {

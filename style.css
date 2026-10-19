@@ -124,6 +124,12 @@ button.big { font-size: 17px; padding: 12px; text-transform: uppercase; }
 .logo { font-size: 46px; font-weight: 900; letter-spacing: .14em; color: #d9e6ea; text-shadow: 0 0 18px rgba(63,193,214,.6); line-height: 1; margin-top: 6px; }
 .logo span { color: #d9533b; display: block; font-size: 40px; text-shadow: 0 0 18px rgba(217,83,59,.6); }
 .tag { color: #8fa6ae; font-style: italic; margin-bottom: 8px; }
+.menu-desc {
+  min-height: 4.4em; padding: 8px 12px; border-left: 3px solid #3f5c68; background: rgba(30,48,56,.35);
+  font-size: 13px; line-height: 1.45; color: #8fa6ae; text-align: left; transition: color .15s, border-color .15s;
+}
+.menu-desc.active { color: #d8e2e6; border-left-color: #6fd3e6; }
+.title-panel button.big:hover, .title-panel button.big:focus-visible { border-color: #6fd3e6; }
 .foot { font-size: 12px; color: #7d929a; margin-top: 6px; }
 .brief { font-size: 14px; line-height: 1.5; white-space: pre-line; color: #c6d4d9; }
 .mission { display: flex; flex-direction: column; align-items: flex-start; text-align: left; gap: 2px; }
